@@ -1,0 +1,17 @@
+#!/bin/zsh
+
+set -ex
+
+VIDEO_INPUT="$1"
+VIDEO_ID="$2"
+TIME="$3"
+
+TMP_AUDIO="/tmp/$VIDEO_ID.mp3"
+
+if [[ -f "$TMP_AUDIO" ]]; then
+  echo "skip downloading $VIDEO_ID because $TMP_AUDIO already exists"
+else
+  yt-dlp --extract-audio --audio-format mp3 --output $TMP_AUDIO "https://youtube.com/watch?v=$VIDEO_ID"
+fi
+
+ffmpeg -i $VIDEO_INPUT -ss "$TIME" -i $TMP_AUDIO -c:v copy -map 0:v:0 -map 1:a:0 -shortest output.mp4
