@@ -6,6 +6,9 @@ VIDEO_INPUT="$1"
 VIDEO_ID="$2"
 TIME="$3"
 
+ACTION="${4:-replace}"
+VOLUME="$5"
+
 TMP_AUDIO="/tmp/$VIDEO_ID.mp3"
 
 if [[ -f "$TMP_AUDIO" ]]; then
@@ -14,4 +17,17 @@ else
   yt-dlp --extract-audio --audio-format mp3 --output $TMP_AUDIO "https://youtube.com/watch?v=$VIDEO_ID"
 fi
 
-ffmpeg -i $VIDEO_INPUT -ss "$TIME" -i $TMP_AUDIO -c:v copy -map 0:v:0 -map 1:a:0 -shortest output.mp4
+
+if [[ -n "$VOLUME" ]]; then
+  TMP_AUDIO_REDUCED="/tmp/$VIDEO_ID-volume-${VOLUME}.mp3"
+  if [ ! -f "$TMP_AUDIO_REDUCED" ]; then
+    ffmpeg -i $TMP_AUDIO -filter:a "volume=$VOLUME" $TMP_AUDIO_REDUCED
+  fi
+  TMP_AUDIO=$TMP_AUDIO_REDUCED
+fi
+
+if [[ "$ACTION" == "replace" ]]; then
+  ffmpeg -i $VIDEO_INPUT -ss "$TIME" -i $TMP_AUDIO -c:v copy -map 0:v:0 -map 1:a:0 -shortest output.mp4
+elif [[ "$ACTION" == "merge" ]]; then
+  ffmpeg -i $VIDEO_INPUT -ss "$TIME" -i $TMP_AUDIO -filter_complex "[0:a][1:a]amerge=inputs=2[aout]" -map 0:v:0 -map "[aout]" -c:v copy -c:a aac -ac 2 output.mp4
+fi
